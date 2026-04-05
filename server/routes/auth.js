@@ -10,7 +10,18 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     // 1. Find user by username
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username }).populate('votedFor');
+    res.json({
+  token,
+  user: {
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    role: user.role,
+    hasVoted: user.hasVoted,
+    votedFor: user.votedFor // This now contains full candidate objects
+  }
+});
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }

@@ -5,6 +5,7 @@ import LogoutButton from '../components/LogoutButton';
 import DashboardHome from './DashboardHome';
 import StudentRegistry from './StudentRegistry';
 import CandidateManagement from './CandidateManagement';
+import CategoryManagement from './CategoryManagement';
 
 const AdminDashboard = ({ setUser }) => {
   return (
@@ -22,6 +23,9 @@ const AdminDashboard = ({ setUser }) => {
           <li style={{ margin: '20px 0' }}>
             <Link to="/admin/candidates" style={{ color: 'white', textDecoration: 'none' }}>🏅 Manage Candidates</Link>
           </li>
+          <li style={{ margin: '20px 0' }}>
+  <Link to="/admin/categories" style={{ color: 'white', textDecoration: 'none' }}>🏷️ Manage Categories</Link>
+</li>
         </ul>
         <div style={{ marginTop: '50px' }}>
           <LogoutButton setUser={setUser} />
@@ -34,6 +38,7 @@ const AdminDashboard = ({ setUser }) => {
           <Route path="/" element={<DashboardHome />} />
           <Route path="/students" element={<StudentRegistry />} />
           <Route path="/candidates" element={<CandidateManagement />} />
+          <Route path="/categories" element={<CategoryManagement />} />
         </Routes>
       </div>
     </div>

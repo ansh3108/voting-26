@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Candidate = require('../models/Candidate');
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// --- STUDENT/USER MANAGEMENT ---
+// --- 1. STUDENT/USER MANAGEMENT ---
 
 /**
  * @route   POST /api/admin/add-user
- * @desc    Manually register a student (Admin only logic)
+ * @desc    Register a new student. Protected: Admins only.
  */
-router.post('/add-user', async (req, res) => {
+router.post('/add-user', protect, adminOnly, async (req, res) => {
   try {
     const { name, username, password, role } = req.body;
 
@@ -21,7 +22,7 @@ router.post('/add-user', async (req, res) => {
     const newUser = new User({
       name,
       username,
-      password, // Will be auto-hashed by User model pre-save hook
+      password, // Auto-hashed by pre-save hook in User model
       role: role || 'user'
     });
 
@@ -37,87 +38,86 @@ router.post('/add-user', async (req, res) => {
 
 /**
  * @route   GET /api/admin/users
- * @desc    Get list of all students (voters)
+ * @desc    Get all students. Protected: Admins only.
  */
-router.get('/users', async (req, res) => {
+router.get('/users', protect, adminOnly, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' }).select('-password').sort({ name: 1 });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching students", error: error.message });
+    res.status(500).json({ message: "Error fetching students" });
   }
 });
 
 /**
  * @route   DELETE /api/admin/user/:id
- * @desc    Delete a student from the system
+ * @desc    Remove a student. Protected: Admins only.
  */
-router.delete('/user/:id', async (req, res) => {
+router.delete('/user/:id', protect, adminOnly, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: "Student removed successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting student", error: error.message });
+    res.status(500).json({ message: "Error deleting student" });
   }
 });
 
 
-// --- CANDIDATE MANAGEMENT ---
+// --- 2. CANDIDATE MANAGEMENT ---
 
 /**
  * @route   POST /api/admin/add-candidate
- * @desc    Add a candidate to a specific category
+ * @desc    Add a candidate to a category. Protected: Admins only.
  */
-router.post('/add-candidate', async (req, res) => {
+router.post('/add-candidate', protect, adminOnly, async (req, res) => {
   try {
     const { name, category, imageUrl } = req.body;
     const newCandidate = new Candidate({ name, category, imageUrl });
     await newCandidate.save();
     res.status(201).json({ message: "Candidate added!", candidate: newCandidate });
   } catch (error) {
-    res.status(500).json({ message: "Error adding candidate", error: error.message });
+    res.status(500).json({ message: "Error adding candidate" });
   }
 });
 
 /**
  * @route   GET /api/admin/candidates
- * @desc    Get all candidates for all categories
+ * @desc    Get all candidates. Protected: Admins only.
  */
-router.get('/candidates', async (req, res) => {
+router.get('/candidates', protect, adminOnly, async (req, res) => {
   try {
     const candidates = await Candidate.find().sort({ category: 1 });
     res.json(candidates);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching candidates", error: error.message });
+    res.status(500).json({ message: "Error fetching candidates" });
   }
 });
 
 /**
  * @route   DELETE /api/admin/candidate/:id
- * @desc    Remove a candidate
+ * @desc    Remove a candidate. Protected: Admins only.
  */
-router.delete('/candidate/:id', async (req, res) => {
+router.delete('/candidate/:id', protect, adminOnly, async (req, res) => {
   try {
     await Candidate.findByIdAndDelete(req.params.id);
     res.json({ message: "Candidate deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting candidate", error: error.message });
+    res.status(500).json({ message: "Error deleting candidate" });
   }
 });
 
 
-// --- DASHBOARD ANALYTICS ---
+// --- 3. DASHBOARD ANALYTICS ---
 
 /**
  * @route   GET /api/admin/stats
- * @desc    Get real-time election progress for the dashboard cards
+ * @desc    Get real-time election progress. Protected: Admins only.
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', protect, adminOnly, async (req, res) => {
   try {
     const totalVoters = await User.countDocuments({ role: 'user' });
     const votedCount = await User.countDocuments({ role: 'user', hasVoted: true });
     
-    // Fetch candidates sorted by most votes to show leaders
     const candidates = await Candidate.find().sort({ voteCount: -1 });
 
     res.json({
@@ -126,7 +126,7 @@ router.get('/stats', async (req, res) => {
       candidates
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching live stats", error: error.message });
+    res.status(500).json({ message: "Error fetching stats", error: error.message });
   }
 });
 

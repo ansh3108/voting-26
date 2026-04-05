@@ -19,6 +19,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vote', require('./routes/vote'));
+app.use('/api/categories', require('./routes/category'));
 
 // Test Route
 app.get('/', (req, res) => {
