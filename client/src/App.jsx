@@ -1,27 +1,52 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+
+// Import all your Pages
 import Login from './pages/Login';
+import AdminDashboard from './pages/AdminDashboard';
+import VoterDashboard from './pages/VoterDashboard';
 
 function App() {
+  // This state holds the logged-in user's information (name, role, hasVoted, etc.)
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // On page load, check if user is already logged in
+  // When the app first loads, check if there's a user saved in LocalStorage
   useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
-    if (savedUser) {
-      setUser(savedUser.user);
+    const savedData = localStorage.getItem('user');
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setUser(parsedData.user); // Set the user from the saved session
     }
+    setLoading(false); // Stop showing a blank screen once check is done
   }, []);
+
+  if (loading) return <div style={{ padding: '20px' }}>Loading application...</div>;
 
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        
-        {/* Basic placeholders for now */}
-        <Route path="/admin" element={user?.role === 'admin' ? <h1>Admin Dashboard</h1> : <Navigate to="/login" />} />
-        <Route path="/voter" element={user?.role === 'user' ? <h1>Voter Dashboard</h1> : <Navigate to="/login" />} />
-        
+        {/* Public Route: Login */}
+        <Route 
+          path="/login" 
+          element={!user ? <Login setUser={setUser} /> : (user.role === 'admin' ? <Navigate to="/admin" /> : <Navigate to="/voter" />)} 
+        />
+
+        {/* Protected Route: Admin Panel 
+            Note the '/*' - this allows AdminDashboard to handle its own sub-routes like /students and /candidates
+        */}
+        <Route 
+          path="/admin/*" 
+          element={user?.role === 'admin' ? <AdminDashboard setUser={setUser} /> : <Navigate to="/login" />} 
+        />
+
+        {/* Protected Route: Voter Portal */}
+        <Route 
+          path="/voter" 
+          element={user?.role === 'user' ? <VoterDashboard user={user} setUser={setUser} /> : <Navigate to="/login" />} 
+        />
+
+        {/* Default Redirect: If no path matches, go to Login */}
         <Route path="/" element={<Navigate to="/login" />} />
       </Routes>
     </Router>

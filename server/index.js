@@ -18,6 +18,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/admin', adminRoutes); 
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/vote', require('./routes/vote'));
 
 // Test Route
 app.get('/', (req, res) => {
