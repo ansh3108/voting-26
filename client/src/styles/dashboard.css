@@ -1,0 +1,322 @@
+/* School Voting — shared dashboard styling (clean / shadcn-inspired) */
+
+:root {
+  --dv-bg: #f4f6f8;
+  --dv-surface: #ffffff;
+  --dv-border: #e5e7eb;
+  --dv-muted: #64748b;
+  --dv-text: #0f172a;
+  --dv-primary: #2563eb;
+  --dv-primary-hover: #1d4ed8;
+  --dv-success: #16a34a;
+  --dv-success-hover: #15803d;
+  --dv-danger: #dc2626;
+  --dv-danger-hover: #b91c1c;
+  --dv-radius: 12px;
+  --dv-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --dv-shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+.dv-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.dv-card {
+  background: var(--dv-surface);
+  border: 1px solid var(--dv-border);
+  border-radius: var(--dv-radius);
+  box-shadow: var(--dv-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dv-card-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--dv-border);
+}
+
+.dv-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.dv-stat-card {
+  border-radius: var(--dv-radius);
+  padding: 1.35rem 1.5rem;
+  color: #fff;
+  box-shadow: var(--dv-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dv-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--dv-shadow-lg);
+}
+
+.dv-stat-card--green {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.dv-stat-card--blue {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.dv-stat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  opacity: 0.95;
+  margin: 0 0 0.5rem 0;
+}
+
+.dv-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.dv-table-wrap {
+  background: var(--dv-surface);
+  border: 1px solid var(--dv-border);
+  border-radius: var(--dv-radius);
+  overflow: hidden;
+  box-shadow: var(--dv-shadow);
+}
+
+.dv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.dv-table thead tr {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--dv-border);
+}
+
+.dv-table th {
+  text-align: left;
+  padding: 0.875rem 1.25rem;
+  color: var(--dv-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dv-table td {
+  padding: 0.875rem 1.25rem;
+  color: var(--dv-text);
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dv-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.dv-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.dv-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.dv-btn--primary {
+  background: var(--dv-primary);
+  color: #fff;
+}
+
+.dv-btn--primary:hover:not(:disabled) {
+  background: var(--dv-primary-hover);
+}
+
+.dv-btn--success {
+  background: var(--dv-success);
+  color: #fff;
+}
+
+.dv-btn--success:hover:not(:disabled) {
+  background: var(--dv-success-hover);
+}
+
+.dv-btn--danger {
+  background: transparent;
+  color: var(--dv-danger);
+  font-weight: 600;
+}
+
+.dv-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: var(--dv-danger-hover);
+}
+
+.dv-btn--ghost {
+  background: transparent;
+  color: var(--dv-muted);
+}
+
+.dv-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--dv-text);
+}
+
+.dv-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--dv-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.dv-input:focus {
+  outline: none;
+  border-color: var(--dv-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.dv-spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: var(--dv-primary);
+  border-radius: 50%;
+  animation: dv-spin 0.7s linear infinite;
+}
+
+.dv-spinner--sm {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-width: 2px;
+}
+
+.dv-spinner--white {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+}
+
+@keyframes dv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dv-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  color: var(--dv-muted);
+}
+
+.dv-admin-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.dv-admin-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.dv-admin-sidebar h3 {
+  color: #f8fafc;
+  border-bottom: 1px solid rgba(248, 250, 252, 0.12);
+  padding-bottom: 0.75rem;
+  margin-top: 0;
+  font-size: 1.125rem;
+}
+
+.dv-admin-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dv-admin-nav li {
+  margin: 0.35rem 0;
+}
+
+.dv-admin-nav a {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dv-admin-nav a:hover {
+  background: rgba(248, 250, 252, 0.08);
+  color: #fff;
+}
+
+.dv-admin-main {
+  flex: 1;
+  padding: 2rem;
+  background: var(--dv-bg);
+  min-width: 0;
+}
+
+.dv-ballot-card {
+  border: 2px solid var(--dv-border);
+  border-radius: var(--dv-radius);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+  user-select: none;
+}
+
+.dv-ballot-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--dv-shadow);
+}
+
+.dv-ballot-card--selected {
+  border-color: var(--dv-primary);
+  background: #eff6ff;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+}
+
+.dv-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.dv-badge--muted {
+  background: #f1f5f9;
+  color: var(--dv-muted);
+}

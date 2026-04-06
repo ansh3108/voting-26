@@ -1,7 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import LogoutButton from '../components/LogoutButton';
 
-// THESE ARE THE MISSING IMPORTS:
 import DashboardHome from './DashboardHome';
 import StudentRegistry from './StudentRegistry';
 import CandidateManagement from './CandidateManagement';
@@ -9,31 +8,29 @@ import CategoryManagement from './CategoryManagement';
 
 const AdminDashboard = ({ setUser }) => {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
-      <div style={{ width: '250px', backgroundColor: '#2c3e50', color: 'white', padding: '20px' }}>
-        <h3 style={{ borderBottom: '1px solid #444', paddingBottom: '10px' }}>Admin Panel</h3>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          <li style={{ margin: '20px 0' }}>
-            <Link to="/admin" style={{ color: 'white', textDecoration: 'none' }}>📊 Live Results</Link>
+    <div className="dv-admin-shell">
+      <div className="dv-admin-sidebar">
+        <h3>Admin panel</h3>
+        <ul className="dv-admin-nav">
+          <li>
+            <Link to="/admin">Live results</Link>
           </li>
-          <li style={{ margin: '20px 0' }}>
-            <Link to="/admin/students" style={{ color: 'white', textDecoration: 'none' }}>👥 Manage Students</Link>
+          <li>
+            <Link to="/admin/students">Manage students</Link>
           </li>
-          <li style={{ margin: '20px 0' }}>
-            <Link to="/admin/candidates" style={{ color: 'white', textDecoration: 'none' }}>🏅 Manage Candidates</Link>
+          <li>
+            <Link to="/admin/candidates">Manage candidates</Link>
           </li>
-          <li style={{ margin: '20px 0' }}>
-  <Link to="/admin/categories" style={{ color: 'white', textDecoration: 'none' }}>🏷️ Manage Categories</Link>
-</li>
+          <li>
+            <Link to="/admin/categories">Manage Categories</Link>
+          </li>
         </ul>
-        <div style={{ marginTop: '50px' }}>
+        <div style={{ marginTop: '2rem' }}>
           <LogoutButton setUser={setUser} />
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div style={{ flex: 1, padding: '40px', backgroundColor: '#f4f7f6' }}>
+      <div className="dv-admin-main">
         <Routes>
           <Route path="/" element={<DashboardHome />} />
           <Route path="/students" element={<StudentRegistry />} />

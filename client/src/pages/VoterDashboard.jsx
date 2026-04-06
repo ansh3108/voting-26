@@ -5,14 +5,14 @@ import LogoutButton from '../components/LogoutButton';
 const VoterDashboard = ({ user, setUser }) => {
   const [candidates, setCandidates] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selections, setSelections] = useState({}); // Format: { "Head Boy": ["id1"], "Sports Team": ["id2", "id3"] }
+  const [selections, setSelections] = useState({}); // Format: { "CategoryName": [id1, id2] }
   const [votedStatus, setVotedStatus] = useState(user?.hasVoted || false);
   const [loading, setLoading] = useState(true);
 
+  // 1. Fetch Ballot Data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch both candidates and category limits in parallel
         const [resCand, resCat] = await Promise.all([
           API.get('/admin/candidates'),
           API.get('/categories')
@@ -30,14 +30,14 @@ const VoterDashboard = ({ user, setUser }) => {
     else setLoading(false);
   }, [votedStatus]);
 
-  // Group candidates by category for rendering
+  // Group candidates for the ballot view
   const groupedCandidates = candidates.reduce((acc, curr) => {
     if (!acc[curr.category]) acc[curr.category] = [];
     acc[curr.category].push(curr);
     return acc;
   }, {});
 
-  // MULTI-SELECT LOGIC: Toggle candidates in/out of the category array
+  // 2. Selection Toggle Logic
   const handleSelect = (categoryName, candidateId) => {
     const categoryInfo = categories.find(c => c.name === categoryName);
     const maxAllowed = categoryInfo ? categoryInfo.maxSelections : 1;
@@ -45,13 +45,11 @@ const VoterDashboard = ({ user, setUser }) => {
     const currentSelections = selections[categoryName] || [];
 
     if (currentSelections.includes(candidateId)) {
-      // Remove if already selected (Toggle Off)
       setSelections({
         ...selections,
         [categoryName]: currentSelections.filter(id => id !== candidateId)
       });
     } else {
-      // Add if under limit (Toggle On)
       if (currentSelections.length < maxAllowed) {
         setSelections({
           ...selections,
@@ -63,24 +61,22 @@ const VoterDashboard = ({ user, setUser }) => {
     }
   };
 
+  // 3. Submit Vote
   const submitVote = async () => {
-    // Check if at least one selection is made in every category
     if (Object.keys(selections).length < categories.length) {
-      return alert("Please make at least one selection in every category before submitting.");
+      return alert("Please make selections in all categories before submitting.");
     }
 
-    if (!window.confirm("Ready to cast your ballot? This action is permanent.")) return;
+    if (!window.confirm("Submit your final ballot? This cannot be changed later.")) return;
 
     try {
       const allSelectedIds = Object.values(selections).flat();
       await API.post('/vote/submit', { userId: user.id, selectedCandidateIds: allSelectedIds });
 
-      // Build the list of chosen candidate objects for the receipt view
+      // Update State & Local Storage
       const chosenCandidates = candidates.filter(c => allSelectedIds.includes(c._id));
-
       const updatedUser = { ...user, hasVoted: true, votedFor: chosenCandidates };
       
-      // Update LocalStorage so a refresh doesn't reset the UI
       const storageData = JSON.parse(localStorage.getItem('user'));
       localStorage.setItem('user', JSON.stringify({ ...storageData, user: updatedUser }));
       
@@ -93,33 +89,58 @@ const VoterDashboard = ({ user, setUser }) => {
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Loading Ballot...</div>;
 
-  // --- VIEW: VOTER RECEIPT (If user already voted) ---
+  // --- VIEW A: THE CATEGORY-BASED RECEIPT ---
   if (votedStatus) {
+    // Logic to group the user's recorded votes by Category
+    const votesByCategory = user.votedFor?.reduce((acc, curr) => {
+      const cat = curr.category;
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(curr.name);
+      return acc;
+    }, {});
+
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px', textAlign: 'center' }}>
-        <h1 style={{ color: '#2ecc71', fontSize: '2.5rem' }}>Ballot Confirmed! ✅</h1>
-        <p>Your selections have been recorded securely. Here is your receipt:</p>
+        <h1 style={{ color: '#2ecc71', fontSize: '2.2rem', marginBottom: '10px' }}>Ballot Confirmed! ✅</h1>
+        <p style={{ color: '#666' }}>Your selections have been recorded. Here is your official summary:</p>
         
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', marginTop: '30px' }}>
-          {user.votedFor?.map(c => (
-            <div key={c._id} style={receiptCardStyle}>
-              <img src={c.imageUrl || 'https://via.placeholder.com/60'} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%' }} />
-              <h4>{c.name}</h4>
-              <p style={{ fontSize: '0.8rem', color: '#3498db' }}>{c.category}</p>
-            </div>
-          ))}
+        <div style={receiptContainerStyle}>
+          <div style={receiptHeaderStyle}>
+            <h3 style={{ margin: 0, color: '#2c3e50' }}>Receipt Summary</h3>
+            <p style={{ margin: '5px 0 0 0', color: '#7f8c8d' }}>Student: <strong>{user.username}</strong></p>
+          </div>
+          
+          <div style={{ display: 'grid', gap: '15px' }}>
+            {Object.entries(votesByCategory || {}).map(([categoryName, names]) => (
+              <div key={categoryName} style={receiptRowStyle}>
+                <small style={categoryLabelStyle}>Category: {categoryName}</small>
+                <h4 style={{ margin: '5px 0 0 0', color: '#2c3e50' }}>
+                  {names.join(' & ')}
+                </h4>
+              </div>
+            ))}
+          </div>
+
+          <div style={receiptFooterStyle}>
+            <small>Reference ID: {user.id?.slice(-8).toUpperCase()}</small>
+            <br />
+            <small>Thank you for participating in the democratic process.</small>
+          </div>
         </div>
-        <div style={{ marginTop: '50px' }}><LogoutButton setUser={setUser} /></div>
+
+        <div style={{ marginTop: '40px' }}>
+          <LogoutButton setUser={setUser} />
+        </div>
       </div>
     );
   }
 
-  // --- VIEW: THE BALLOT ---
+  // --- VIEW B: THE BALLOT ---
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#2c3e50' }}>School Election Ballot</h2>
+          <h2 style={{ margin: 0, color: '#2c3e50' }}>Official Election Ballot</h2>
           <p style={{ color: '#7f8c8d', margin: '5px 0 0 0' }}>Student: <strong>{user.name}</strong></p>
         </div>
         <LogoutButton setUser={setUser} />
@@ -127,22 +148,19 @@ const VoterDashboard = ({ user, setUser }) => {
 
       {categories.map(cat => (
         <div key={cat._id} style={{ marginBottom: '60px' }}>
-          
-          {/* CATEGORY HEADER WITH BLUE ACCENT */}
-          <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '25px' }}>
-            <h3 style={{ borderLeft: '5px solid #3498db', paddingLeft: '15px', margin: 0, color: '#2c3e50' }}>
+          <div style={categoryHeaderStyle}>
+            <h3 style={{ borderLeft: '5px solid #3498db', paddingLeft: '15px', margin: 0 }}>
               {cat.name} 
-              <small style={{ fontSize: '0.85rem', color: '#888', marginLeft: '12px', fontWeight: 'normal' }}>
+              <small style={{ fontSize: '0.85rem', color: '#888', marginLeft: '12px' }}>
                 (Select up to {cat.maxSelections})
               </small>
             </h3>
             <p style={{ margin: '8px 0 0 20px', fontSize: '0.9rem', color: '#3498db' }}>
-              Current Selections: <strong>{selections[cat.name]?.length || 0}</strong> / {cat.maxSelections}
+              Selections: <strong>{selections[cat.name]?.length || 0}</strong> / {cat.maxSelections}
             </p>
           </div>
 
-          {/* CANDIDATE GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
+          <div style={candidateGridStyle}>
             {groupedCandidates[cat.name]?.map(cand => {
               const isSelected = selections[cat.name]?.includes(cand._id);
               return (
@@ -150,24 +168,15 @@ const VoterDashboard = ({ user, setUser }) => {
                   key={cand._id} 
                   onClick={() => handleSelect(cat.name, cand._id)}
                   style={{
-                    ...cardBaseStyle,
-                    borderColor: isSelected ? '#3498db' : '#ddd',
-                    backgroundColor: isSelected ? '#ebf5fb' : 'white',
-                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                    boxShadow: isSelected ? '0 8px 20px rgba(52, 152, 219, 0.15)' : 'none'
+                    ...candidateCardStyle,
+                    borderColor: isSelected ? '#3498db' : '#eee',
+                    backgroundColor: isSelected ? '#f0f7ff' : 'white',
+                    transform: isSelected ? 'translateY(-3px)' : 'none'
                   }}
                 >
-                  <img 
-                    src={cand.imageUrl || 'https://via.placeholder.com/100'} 
-                    alt="" 
-                    style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} 
-                  />
-                  <h4 style={{ margin: '5px 0', color: '#2c3e50' }}>{cand.name}</h4>
-                  {isSelected ? (
-                    <span style={{ color: '#3498db', fontWeight: 'bold', fontSize: '0.85rem' }}>✓ SELECTED</span>
-                  ) : (
-                    <span style={{ color: '#95a5a6', fontSize: '0.85rem' }}>Click to select</span>
-                  )}
+                  <img src={cand.imageUrl || 'https://placehold.co/80'} alt="" style={avatarStyle} />
+                  <h4 style={{ margin: '10px 0' }}>{cand.name}</h4>
+                  {isSelected && <span style={{ color: '#3498db', fontWeight: 'bold', fontSize: '0.8rem' }}>✓ SELECTED</span>}
                 </div>
               );
             })}
@@ -175,46 +184,85 @@ const VoterDashboard = ({ user, setUser }) => {
         </div>
       ))}
 
-      <button onClick={submitVote} style={submitButtonStyle}>
-        Finalize and Submit Ballot
-      </button>
+      <button onClick={submitVote} style={submitButtonStyle}>Cast Final Votes</button>
     </div>
   );
 };
 
 // --- STYLES ---
-const cardBaseStyle = {
-  border: '2px solid #ddd',
-  borderRadius: '15px',
-  padding: '25px',
-  textAlign: 'center',
-  cursor: 'pointer',
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-  userSelect: 'none'
+const receiptContainerStyle = {
+  marginTop: '30px',
+  backgroundColor: '#fff',
+  padding: '35px',
+  borderRadius: '12px',
+  boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+  textAlign: 'left',
+  border: '1px solid #eee'
 };
 
-const receiptCardStyle = {
-  padding: '20px',
-  border: '2px solid #2ecc71',
-  borderRadius: '12px',
-  backgroundColor: '#fff',
-  width: '160px',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+const receiptHeaderStyle = {
+  borderBottom: '2px solid #f9f9f9',
+  paddingBottom: '20px',
+  marginBottom: '20px'
 };
+
+const receiptRowStyle = {
+  padding: '15px',
+  borderRadius: '8px',
+  borderLeft: '4px solid #2ecc71',
+  backgroundColor: '#fcfdfc'
+};
+
+const categoryLabelStyle = {
+  color: '#95a5a6',
+  textTransform: 'uppercase',
+  fontWeight: 'bold',
+  fontSize: '0.75rem'
+};
+
+const receiptFooterStyle = {
+  marginTop: '30px',
+  paddingTop: '20px',
+  borderTop: '1px dashed #ddd',
+  textAlign: 'center',
+  color: '#bdc3c7',
+  fontSize: '0.85rem'
+};
+
+const categoryHeaderStyle = {
+  borderBottom: '1px solid #f0f0f0',
+  paddingBottom: '12px',
+  marginBottom: '25px'
+};
+
+const candidateGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+  gap: '20px'
+};
+
+const candidateCardStyle = {
+  border: '2px solid #eee',
+  borderRadius: '12px',
+  padding: '20px',
+  textAlign: 'center',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease'
+};
+
+const avatarStyle = { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' };
 
 const submitButtonStyle = {
   width: '100%',
-  padding: '22px',
+  padding: '20px',
   backgroundColor: '#2ecc71',
   color: 'white',
   border: 'none',
-  borderRadius: '12px',
-  fontSize: '1.4rem',
+  borderRadius: '10px',
+  fontSize: '1.2rem',
   fontWeight: 'bold',
   cursor: 'pointer',
-  boxShadow: '0 6px 15px rgba(46, 204, 113, 0.3)',
-  marginTop: '20px',
-  transition: 'background-color 0.2s'
+  boxShadow: '0 4px 12px rgba(46, 204, 113, 0.2)'
 };
 
 export default VoterDashboard;

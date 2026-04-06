@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import VoterDashboard from './pages/VoterDashboard';
+import Spinner from './components/Spinner';
 
 function App() {
   // This state holds the logged-in user's information (name, role, hasVoted, etc.)
@@ -21,7 +22,14 @@ function App() {
     setLoading(false); // Stop showing a blank screen once check is done
   }, []);
 
-  if (loading) return <div style={{ padding: '20px' }}>Loading application...</div>;
+  if (loading) {
+    return (
+      <div className="dv-center" style={{ minHeight: '50vh' }}>
+        <Spinner />
+        <span>Loading application…</span>
+      </div>
+    );
+  }
 
   return (
     <Router>

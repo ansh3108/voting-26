@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
+import Spinner from '../components/Spinner';
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState({ name: '', maxSelections: 1 });
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -26,13 +28,15 @@ const CategoryManagement = () => {
     e.preventDefault();
     if (!newCategory.name.trim()) return;
 
+    setSubmitting(true);
     try {
-      // Sending both name and the selection limit to the backend
       await API.post('/categories', newCategory);
-      setNewCategory({ name: '', maxSelections: 1 }); // Reset form
-      fetchCategories();
+      setNewCategory({ name: '', maxSelections: 1 });
+      await fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || "Error adding category");
+      alert(err.response?.data?.message || 'Error adding category');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -48,124 +52,107 @@ const CategoryManagement = () => {
   };
 
   return (
-    <div style={{ maxWidth: '900px' }}>
-      <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Manage Voting Posts</h2>
+    <div style={{ maxWidth: 900 }}>
+      <h2 style={{ marginTop: 0, marginBottom: '1.25rem' }}>Manage voting posts</h2>
 
-      {/* CREATE CATEGORY CARD */}
-      <div style={cardStyle}>
-        <h4 style={{ marginTop: 0 }}>Define a New Post</h4>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 2, minWidth: '200px' }}>
-            <label style={labelStyle}>Post Name (e.g. Head Boy)</label>
-            <input 
-              type="text" 
-              placeholder="Enter name..."
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Define a new post</h4>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 2, minWidth: 200 }}>
+            <label style={labelStyle}>Post name (e.g. Head Boy)</label>
+            <input
+              className="dv-input"
+              type="text"
+              placeholder="Enter name…"
               value={newCategory.name}
               onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-              style={inputStyle}
-              required 
+              required
             />
           </div>
 
-          <div style={{ flex: 1, minWidth: '120px' }}>
-            <label style={labelStyle}>Max Selections</label>
-            <input 
-              type="number" 
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <label style={labelStyle}>Max selections</label>
+            <input
+              className="dv-input"
+              type="number"
               min="1"
               value={newCategory.maxSelections}
-              onChange={(e) => setNewCategory({ ...newCategory, maxSelections: parseInt(e.target.value) })}
-              style={inputStyle}
-              required 
+              onChange={(e) =>
+                setNewCategory({
+                  ...newCategory,
+                  maxSelections: parseInt(e.target.value, 10) || 1,
+                })
+              }
+              required
             />
           </div>
 
-          <button type="submit" style={buttonStyle}>Create Post</button>
+          <button type="submit" className="dv-btn dv-btn--primary" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Spinner size="sm" white />
+                Creating…
+              </>
+            ) : (
+              'Create post'
+            )}
+          </button>
         </form>
       </div>
 
-      {/* CATEGORY LIST TABLE */}
-      <div style={cardStyle}>
-        <h4 style={{ marginTop: 0 }}>Active Posts</h4>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Active posts</h4>
         {loading ? (
-          <p>Loading...</p>
+          <div className="dv-center" style={{ padding: '2rem' }}>
+            <Spinner />
+            <span>Loading posts…</span>
+          </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
-                <th style={thStyle}>Category / Post Name</th>
-                <th style={thStyle}>Max Selections Allowed</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => (
-                <tr key={cat._id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}><strong>{cat.name}</strong></td>
-                  <td style={tdStyle}>
-                    <span style={badgeStyle}>{cat.maxSelections} Person(s)</span>
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <button 
-                      onClick={() => handleDelete(cat._id)} 
-                      style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="dv-table-wrap">
+            <table className="dv-table">
+              <thead>
+                <tr>
+                  <th>Category / post name</th>
+                  <th>Max selections</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {categories.map((cat) => (
+                  <tr key={cat._id}>
+                    <td>
+                      <strong>{cat.name}</strong>
+                    </td>
+                    <td>
+                      <span className="dv-badge" style={{ background: '#eff6ff', color: 'var(--dv-primary)' }}>
+                        {cat.maxSelections} person{cat.maxSelections !== 1 ? 's' : ''}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="dv-btn dv-btn--danger"
+                        onClick={() => handleDelete(cat._id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-// --- STYLES ---
-const cardStyle = {
-  backgroundColor: '#fff',
-  padding: '25px',
-  borderRadius: '10px',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-  marginBottom: '30px'
-};
-
 const labelStyle = {
   display: 'block',
-  fontSize: '0.85rem',
-  color: '#7f8c8d',
-  marginBottom: '5px'
+  fontSize: '0.8rem',
+  color: 'var(--dv-muted)',
+  marginBottom: 4,
 };
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px',
-  borderRadius: '5px',
-  border: '1px solid #ddd',
-  boxSizing: 'border-box'
-};
-
-const buttonStyle = {
-  padding: '11px 25px',
-  backgroundColor: '#3498db',
-  color: 'white',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: 'pointer',
-  fontWeight: 'bold'
-};
-
-const badgeStyle = {
-  backgroundColor: '#ebf5fb',
-  color: '#3498db',
-  padding: '4px 12px',
-  borderRadius: '20px',
-  fontSize: '0.85rem',
-  fontWeight: 'bold'
-};
-
-const thStyle = { padding: '15px', color: '#95a5a6', fontSize: '0.8rem', textTransform: 'uppercase' };
-const tdStyle = { padding: '15px', color: '#2c3e50' };
 
 export default CategoryManagement;

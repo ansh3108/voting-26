@@ -1,29 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const Category = require('../models/Category');
+const Category = require('../models/Category'); // Check this path!
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// Get all categories (Public - needed by both Admin and Voter)
+// GET all categories
 router.get('/', async (req, res) => {
-  const categories = await Category.find().sort({ name: 1 });
-  res.json(categories);
-});
-
-// Add new category (Admin Only)
-router.post('/', protect, adminOnly, async (req, res) => {
   try {
-    const category = new Category({ name: req.body.name });
-    await category.save();
-    res.status(201).json(category);
+    const categories = await Category.find().sort({ name: 1 });
+    res.json(categories);
   } catch (error) {
-    res.status(400).json({ message: "Category already exists" });
+    // This catch block prevents the 500 crash and gives us a hint
+    console.error("GET Categories Error:", error);
+    res.status(500).json({ message: "Server failed to fetch categories", error: error.message });
   }
 });
 
-// Delete category (Admin Only)
-router.delete('/:id', protect, adminOnly, async (req, res) => {
-  await Category.findByIdAndDelete(req.params.id);
-  res.json({ message: "Category deleted" });
+// POST new category
+router.post('/', protect, adminOnly, async (req, res) => {
+  try {
+    const { name, maxSelections } = req.body;
+    const category = new Category({ name, maxSelections });
+    await category.save();
+    res.status(201).json(category);
+  } catch (error) {
+    console.error("POST Category Error:", error);
+    res.status(400).json({ message: "Could not create category. It might already exist." });
+  }
 });
 
 module.exports = router;

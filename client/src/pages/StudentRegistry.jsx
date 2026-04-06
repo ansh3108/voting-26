@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import API from '../api';
+import Spinner from '../components/Spinner';
 
 const StudentRegistry = () => {
   const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({ name: '', username: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // 1. Fetch Students from Backend
   const fetchStudents = async () => {
     try {
       setLoading(true);
       const { data } = await API.get('/admin/users');
       setStudents(data);
     } catch (err) {
-      console.error("Error fetching students:", err);
+      console.error('Error fetching students:', err);
     } finally {
       setLoading(false);
     }
@@ -24,112 +25,171 @@ const StudentRegistry = () => {
     fetchStudents();
   }, []);
 
-  // 2. Add New Student
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       await API.post('/admin/add-user', { ...formData, role: 'user' });
-      setFormData({ name: '', username: '', password: '' }); // Reset form
-      fetchStudents(); // Refresh list
-      alert("Student registered successfully!");
+      setFormData({ name: '', username: '', password: '' });
+      await fetchStudents();
+      alert('Student registered successfully!');
     } catch (err) {
-      alert(err.response?.data?.message || "Error adding student");
+      alert(err.response?.data?.message || 'Error adding student');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // 3. Delete Student
   const deleteStudent = async (id) => {
-    if (window.confirm("Are you sure? This will permanently remove the student and any vote they cast.")) {
+    if (
+      window.confirm(
+        'Are you sure? This will permanently remove the student and any vote they cast.'
+      )
+    ) {
       try {
         await API.delete(`/admin/user/${id}`);
         fetchStudents();
       } catch (err) {
-        alert("Failed to delete student");
+        alert('Failed to delete student');
       }
     }
   };
 
-  // 4. Search Logic
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const q = searchTerm.trim().toLowerCase();
+  const filteredStudents = useMemo(() => {
+    if (!q) return students;
+    return students.filter((s) => {
+      const name = (s.name || '').toLowerCase();
+      const roll = (s.username || '').toLowerCase();
+      return name.includes(q) || roll.includes(q);
+    });
+  }, [students, q]);
 
   return (
-    <div style={{ maxWidth: '1000px' }}>
-      <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Student Registry</h2>
+    <div style={{ maxWidth: 1000 }}>
+      <h2 style={{ marginTop: 0, marginBottom: '1.25rem' }}>Student registry</h2>
 
-      {/* Registration Form Card */}
-      <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
-        <h4 style={{ marginTop: 0 }}>Register New Voter</h4>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-          <input 
-            style={inputStyle}
-            type="text" placeholder="Full Name" 
-            value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} 
-            required 
-          />
-          <input 
-            style={inputStyle}
-            type="text" placeholder="Roll Number / Username" 
-            value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} 
-            required 
-          />
-          <input 
-            style={inputStyle}
-            type="password" placeholder="Password" 
-            value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} 
-            required 
-          />
-          <button type="submit" style={buttonStyle}>Add Student</button>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Register new voter</h4>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}
+        >
+          <div style={{ flex: '1 1 200px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Full name
+            </label>
+            <input
+              className="dv-input"
+              type="text"
+              placeholder="Full name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
+          </div>
+          <div style={{ flex: '1 1 200px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Roll number / username
+            </label>
+            <input
+              className="dv-input"
+              type="text"
+              placeholder="Roll number / username"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              required
+            />
+          </div>
+          <div style={{ flex: '1 1 200px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Password
+            </label>
+            <input
+              className="dv-input"
+              type="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              required
+            />
+          </div>
+          <button type="submit" className="dv-btn dv-btn--primary" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Spinner size="sm" white />
+                Adding…
+              </>
+            ) : (
+              'Add student'
+            )}
+          </button>
         </form>
       </div>
 
-      {/* Search Bar */}
-      <div style={{ marginBottom: '20px' }}>
-        <input 
-          type="text" 
-          placeholder="🔍 Search by name or roll number..." 
+      <div style={{ marginBottom: '1rem' }}>
+        <label
+          style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+        >
+          Search by name or roll number
+        </label>
+        <input
+          className="dv-input"
+          type="search"
+          placeholder="Search by name or roll number…"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '1rem' }}
+          autoComplete="off"
         />
       </div>
 
-      {/* Students Table */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="dv-table-wrap">
+        <table className="dv-table">
           <thead>
-            <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left', borderBottom: '2px solid #eee' }}>
-              <th style={thStyle}>Full Name</th>
-              <th style={thStyle}>Roll No (Username)</th>
-              <th style={thStyle}>Voting Status</th>
-              <th style={thStyle}>Actions</th>
+            <tr>
+              <th>Full name</th>
+              <th>Roll no (username)</th>
+              <th>Voting status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading students...</td></tr>
+              <tr>
+                <td colSpan={4}>
+                  <div className="dv-center" style={{ padding: '2rem' }}>
+                    <Spinner />
+                    <span>Loading students…</span>
+                  </div>
+                </td>
+              </tr>
             ) : filteredStudents.length > 0 ? (
-              filteredStudents.map(s => (
-                <tr key={s._id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}>{s.name}</td>
-                  <td style={tdStyle}>{s.username}</td>
-                  <td style={tdStyle}>
-                    <span style={{ 
-                      padding: '4px 10px', 
-                      borderRadius: '20px', 
-                      fontSize: '0.8rem',
-                      backgroundColor: s.hasVoted ? '#e8f5e9' : '#fff3e0',
-                      color: s.hasVoted ? '#2e7d32' : '#ef6c00'
-                    }}>
-                      {s.hasVoted ? "✅ Voted" : "⏳ Pending"}
+              filteredStudents.map((s) => (
+                <tr key={s._id}>
+                  <td>{s.name}</td>
+                  <td>{s.username}</td>
+                  <td>
+                    <span
+                      className="dv-badge"
+                      style={{
+                        background: s.hasVoted ? '#dcfce7' : '#ffedd5',
+                        color: s.hasVoted ? '#166534' : '#c2410c',
+                      }}
+                    >
+                      {s.hasVoted ? 'Voted' : 'Pending'}
                     </span>
                   </td>
-                  <td style={tdStyle}>
-                    <button 
-                      onClick={() => deleteStudent(s._id)} 
-                      style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                  <td>
+                    <button
+                      type="button"
+                      className="dv-btn dv-btn--danger"
+                      onClick={() => deleteStudent(s._id)}
                     >
                       Delete
                     </button>
@@ -137,7 +197,13 @@ const StudentRegistry = () => {
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#888' }}>No students found matching your search.</td></tr>
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--dv-muted)', padding: '2rem' }}>
+                  {students.length === 0
+                    ? 'No students registered yet.'
+                    : 'No students match your search.'}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -145,27 +211,5 @@ const StudentRegistry = () => {
     </div>
   );
 };
-
-// --- Simple Inline Styles ---
-const inputStyle = {
-  padding: '10px',
-  borderRadius: '5px',
-  border: '1px solid #ddd',
-  flex: '1',
-  minWidth: '200px'
-};
-
-const buttonStyle = {
-  padding: '10px 20px',
-  backgroundColor: '#3498db',
-  color: 'white',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: 'pointer',
-  fontWeight: 'bold'
-};
-
-const thStyle = { padding: '15px', color: '#7f8c8d', fontSize: '0.9rem', textTransform: 'uppercase' };
-const tdStyle = { padding: '15px', color: '#2c3e50' };
 
 export default StudentRegistry;

@@ -1,67 +1,181 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
+import Spinner from '../components/Spinner';
 
 const CandidateManagement = () => {
   const [candidates, setCandidates] = useState([]);
-  const [categories, setCategories] = useState([]); // New state for dropdown
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({ name: '', category: '', imageUrl: '' });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
-    const resCandidates = await API.get('/admin/candidates');
-    const resCategories = await API.get('/categories');
-    setCandidates(resCandidates.data);
-    setCategories(resCategories.data);
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     try {
-      await API.post('/admin/add-candidate', formData);
-      setFormData({ name: '', category: '', imageUrl: '' });
-      fetchData();
-    } catch (err) { alert("Error adding candidate"); }
-  };
-
-  const deleteCandidate = async (id) => {
-    if (window.confirm("Delete candidate?")) {
-      await API.delete(`/admin/candidate/${id}`);
-      fetchData();
+      setLoading(true);
+      const [resCandidates, resCategories] = await Promise.all([
+        API.get('/admin/candidates'),
+        API.get('/categories'),
+      ]);
+      setCandidates(resCandidates.data);
+      setCategories(resCategories.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await API.post('/admin/add-candidate', formData);
+      setFormData({ name: '', category: '', imageUrl: '' });
+      await fetchData();
+    } catch (err) {
+      alert('Error adding candidate');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteCandidate = async (id) => {
+    if (window.confirm('Delete candidate?')) {
+      try {
+        await API.delete(`/admin/candidate/${id}`);
+        fetchData();
+      } catch (err) {
+        alert('Failed to delete');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="dv-center" style={{ minHeight: 200 }}>
+        <Spinner />
+        <span>Loading candidates…</span>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <h3>Add New Candidate</h3>
-      <form onSubmit={handleSubmit} style={{ marginBottom: '30px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <input type="text" placeholder="Full Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-        
-        {/* DROPDOWN INSTEAD OF TEXT INPUT */}
-        <select 
-          value={formData.category} 
-          onChange={(e) => setFormData({...formData, category: e.target.value})} 
-          required
-          style={{ padding: '8px', borderRadius: '4px' }}
+      <h2 style={{ marginTop: 0 }}>Candidates</h2>
+
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Add candidate</h4>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}
         >
-          <option value="">Select Post (Category)</option>
-          {categories.map(cat => (
-            <option key={cat._id} value={cat.name}>{cat.name}</option>
-          ))}
-        </select>
+          <div style={{ flex: '1 1 180px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Full name
+            </label>
+            <input
+              className="dv-input"
+              type="text"
+              placeholder="Full name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
+          </div>
+          <div style={{ flex: '1 1 180px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Post (category)
+            </label>
+            <select
+              className="dv-input"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              required
+            >
+              <option value="">Select post</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: '2 1 220px' }}>
+            <label
+              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
+            >
+              Image URL
+            </label>
+            <input
+              className="dv-input"
+              type="text"
+              placeholder="Image URL"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+            />
+          </div>
+          <button type="submit" className="dv-btn dv-btn--success" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Spinner size="sm" white />
+                Adding…
+              </>
+            ) : (
+              'Add candidate'
+            )}
+          </button>
+        </form>
+      </div>
 
-        <input type="text" placeholder="Image URL" value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} />
-        <button type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '4px' }}>Add Candidate</button>
-      </form>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-        {candidates.map(c => (
-          <div key={c._id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', textAlign: 'center', backgroundColor: 'white' }}>
-            <img src={c.imageUrl || 'https://via.placeholder.com/80'} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', marginBottom: '10px' }} />
-            <h4 style={{ margin: '5px 0' }}>{c.name}</h4>
-            <span style={{ fontSize: '0.8rem', backgroundColor: '#ebf5fb', padding: '2px 8px', borderRadius: '10px', color: '#3498db' }}>{c.category}</span>
-            <p>Votes: <strong>{c.voteCount}</strong></p>
-            <button onClick={() => deleteCandidate(c._id)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem' }}>Remove</button>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: '1.25rem',
+        }}
+      >
+        {candidates.map((c) => (
+          <div
+            key={c._id}
+            className="dv-card"
+            style={{ marginBottom: 0, textAlign: 'center', transition: 'box-shadow 0.2s' }}
+          >
+            <img
+              src={c.imageUrl || 'https://via.placeholder.com/80'}
+              alt=""
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                marginBottom: '0.75rem',
+                objectFit: 'cover',
+              }}
+            />
+            <h4 style={{ margin: '0.25rem 0' }}>{c.name}</h4>
+            <span
+              className="dv-badge"
+              style={{ background: '#eff6ff', color: 'var(--dv-primary)', marginBottom: '0.5rem' }}
+            >
+              {c.category}
+            </span>
+            <p style={{ margin: '0.5rem 0', color: 'var(--dv-muted)' }}>
+              Votes: <strong>{c.voteCount ?? 0}</strong>
+            </p>
+            <button
+              type="button"
+              className="dv-btn dv-btn--danger"
+              onClick={() => deleteCandidate(c._id)}
+            >
+              Remove
+            </button>
           </div>
         ))}
       </div>
