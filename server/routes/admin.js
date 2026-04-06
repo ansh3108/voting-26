@@ -84,7 +84,7 @@ router.post('/add-candidate', protect, adminOnly, async (req, res) => {
  * @route   GET /api/admin/candidates
  * @desc    Get all candidates. Protected: Admins only.
  */
-router.get('/candidates', protect, adminOnly, async (req, res) => {
+router.get('/candidates', protect, async (req, res) => {
   try {
     const candidates = await Candidate.find().sort({ category: 1 });
     res.json(candidates);

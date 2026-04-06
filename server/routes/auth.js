@@ -9,38 +9,28 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 1. Find user by username
+    // 1. Find user and POPULATE their voting history
+    // The 'await' MUST be inside this 'async' function
     const user = await User.findOne({ username }).populate('votedFor');
-    res.json({
-  token,
-  user: {
-    id: user._id,
-    name: user.name,
-    username: user.username,
-    role: user.role,
-    hasVoted: user.hasVoted,
-    votedFor: user.votedFor // This now contains full candidate objects
-  }
-});
+    
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // 2. Check password (Compare plain text with the hash in DB)
+    // 2. Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // 3. Create a JWT Token
-    // We hide the user's ID and role inside this token
+    // 3. Create JWT Token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' } // Token expires in 1 hour
+      { expiresIn: '1h' }
     );
 
-    // 4. Send back the token and user info (excluding password!)
+    // 4. Send back user data (including the populated votedFor array)
     res.json({
       token,
       user: {
@@ -48,7 +38,8 @@ router.post('/login', async (req, res) => {
         name: user.name,
         username: user.username,
         role: user.role,
-        hasVoted: user.hasVoted
+        hasVoted: user.hasVoted,
+        votedFor: user.votedFor 
       }
     });
 
