@@ -1,132 +1,131 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 const Candidate = require('../models/Candidate');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// --- 1. STUDENT/USER MANAGEMENT ---
+// --- MULTER CONFIGURATION ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Make sure this folder exists!
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
 
-/**
- * @route   POST /api/admin/add-user
- * @desc    Register a new student. Protected: Admins only.
- */
-router.post('/add-user', protect, adminOnly, async (req, res) => {
-  try {
-    const { name, username, password, role } = req.body;
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB HARD LIMIT
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|webp/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ message: "Username (Roll No) already exists" });
+    if (mimetype && extname) {
+      return cb(null, true);
     }
+    cb(new Error("Only images (jpeg, jpg, png, webp) are allowed!"));
+  }
+});
 
-    const newUser = new User({
+// --- ROUTES ---
+
+// 1. Add Candidate with Image Upload
+router.post('/add-candidate', protect, adminOnly, upload.single('image'), async (req, res) => {
+  try {
+    const { name, category } = req.body;
+    
+    // req.file contains the info about the uploaded photo
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : '';
+
+    const newCandidate = new Candidate({
       name,
-      username,
-      password, // Auto-hashed by pre-save hook in User model
-      role: role || 'user'
+      category,
+      imageUrl: imagePath // Saving the local path to DB
     });
 
-    await newUser.save();
-    res.status(201).json({ 
-      message: "User created successfully!", 
-      user: { name, username, role: newUser.role } 
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error while creating user", error: error.message });
-  }
-});
-
-/**
- * @route   GET /api/admin/users
- * @desc    Get all students. Protected: Admins only.
- */
-router.get('/users', protect, adminOnly, async (req, res) => {
-  try {
-    const users = await User.find({ role: 'user' }).select('-password').sort({ name: 1 });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching students" });
-  }
-});
-
-/**
- * @route   DELETE /api/admin/user/:id
- * @desc    Remove a student. Protected: Admins only.
- */
-router.delete('/user/:id', protect, adminOnly, async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "Student removed successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting student" });
-  }
-});
-
-
-// --- 2. CANDIDATE MANAGEMENT ---
-
-/**
- * @route   POST /api/admin/add-candidate
- * @desc    Add a candidate to a category. Protected: Admins only.
- */
-router.post('/add-candidate', protect, adminOnly, async (req, res) => {
-  try {
-    const { name, category, imageUrl } = req.body;
-    const newCandidate = new Candidate({ name, category, imageUrl });
     await newCandidate.save();
-    res.status(201).json({ message: "Candidate added!", candidate: newCandidate });
-  } catch (error) {
-    res.status(500).json({ message: "Error adding candidate" });
+    res.status(201).json(newCandidate);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Failed to add candidate" });
   }
 });
 
-/**
- * @route   GET /api/admin/candidates
- * @desc    Get all candidates. Protected: Admins only.
- */
+// 2. Get Stats
+router.get('/stats', protect, adminOnly, async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments({ role: 'user' });
+    const votedCount = await User.countDocuments({ role: 'user', hasVoted: true });
+    res.json({ totalUsers, votedCount });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching stats" });
+  }
+});
+
+// 3. Get All Candidates
 router.get('/candidates', protect, async (req, res) => {
   try {
-    const candidates = await Candidate.find().sort({ category: 1 });
+    const candidates = await Candidate.find().sort({ category: 1, voteCount: -1 });
     res.json(candidates);
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({ message: "Error fetching candidates" });
   }
 });
 
-/**
- * @route   DELETE /api/admin/candidate/:id
- * @desc    Remove a candidate. Protected: Admins only.
- */
-router.delete('/candidate/:id', protect, adminOnly, async (req, res) => {
+// 4. Get All Students
+router.get('/users', protect, adminOnly, async (req, res) => {
   try {
-    await Candidate.findByIdAndDelete(req.params.id);
-    res.json({ message: "Candidate deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting candidate" });
+    const users = await User.find({ role: 'user' }).sort({ name: 1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching users" });
   }
 });
 
-
-// --- 3. DASHBOARD ANALYTICS ---
-
-/**
- * @route   GET /api/admin/stats
- * @desc    Get real-time election progress. Protected: Admins only.
- */
-router.get('/stats', protect, adminOnly, async (req, res) => {
+// 5. Combined Modify Student
+router.put('/user/:id', protect, adminOnly, async (req, res) => {
   try {
-    const totalVoters = await User.countDocuments({ role: 'user' });
-    const votedCount = await User.countDocuments({ role: 'user', hasVoted: true });
-    
-    const candidates = await Candidate.find().sort({ voteCount: -1 });
+    const { name, username, password } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({
-      totalVoters,
-      votedCount,
-      candidates
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching stats", error: error.message });
+    if (username && username !== user.username) {
+      const exists = await User.findOne({ username });
+      if (exists) return res.status(400).json({ message: "Username taken" });
+    }
+
+    user.name = name || user.name;
+    user.username = username || user.username;
+    if (password) user.password = password;
+
+    await user.save();
+    res.json({ message: "Updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Update failed" });
+  }
+});
+
+// 6. Delete Candidate
+router.delete('/candidate/:id', protect, adminOnly, async (req, res) => {
+  try {
+    await Candidate.findByIdAndDelete(req.params.id);
+    res.json({ message: "Candidate removed" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed" });
+  }
+});
+
+// 7. Delete Student
+router.delete('/user/:id', protect, adminOnly, async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed" });
   }
 });
 

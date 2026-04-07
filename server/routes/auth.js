@@ -1,36 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const jwt = require('jsonwebtoken');
 
-// Route: POST /api/auth/login
 router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
   try {
-    const { username, password } = req.body;
+    const user = await User.findOne({ username });
 
-    // 1. Find user and POPULATE their voting history
-    // The 'await' MUST be inside this 'async' function
-    const user = await User.findOne({ username }).populate('votedFor');
-    
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // 2. Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+    // PLAIN TEXT COMPARISON
+    if (password !== user.password) {
+      return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // 3. Create JWT Token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1d' }
     );
 
-    // 4. Send back user data (including the populated votedFor array)
     res.json({
       token,
       user: {
@@ -39,12 +32,13 @@ router.post('/login', async (req, res) => {
         username: user.username,
         role: user.role,
         hasVoted: user.hasVoted,
-        votedFor: user.votedFor 
+        votedFor: user.votedFor
       }
     });
 
-  } catch (error) {
-    res.status(500).json({ message: "Server error during login", error: error.message });
+  } catch (err) {
+    console.error("Login Error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

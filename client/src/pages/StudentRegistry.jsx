@@ -1,215 +1,160 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import API from '../api';
-import Spinner from '../components/Spinner';
 
 const StudentRegistry = () => {
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showPasswords, setShowPasswords] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [formData, setFormData] = useState({ name: '', username: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState({ name: '', username: '', password: '' });
 
   const fetchStudents = async () => {
     try {
-      setLoading(true);
       const { data } = await API.get('/admin/users');
       setStudents(data);
-    } catch (err) {
-      console.error('Error fetching students:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  useEffect(() => { fetchStudents(); }, []);
 
-  const handleSubmit = async (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     try {
-      await API.post('/admin/add-user', { ...formData, role: 'user' });
+      await API.post('/admin/add-user', formData);
       setFormData({ name: '', username: '', password: '' });
-      await fetchStudents();
-      alert('Student registered successfully!');
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error adding student');
-    } finally {
-      setSubmitting(false);
-    }
+      fetchStudents();
+    } catch (err) { alert(err.response?.data?.message || "Error adding student"); }
+  };
+
+  const handleModifySave = async (id) => {
+    try {
+      await API.put(`/admin/user/${id}`, editData);
+      setEditId(null);
+      fetchStudents();
+    } catch (err) { alert("Modify failed"); }
+  };
+
+  const startEdit = (s) => {
+    setEditId(s._id);
+    setEditData({ name: s.name, username: s.username, password: s.password });
   };
 
   const deleteStudent = async (id) => {
-    if (
-      window.confirm(
-        'Are you sure? This will permanently remove the student and any vote they cast.'
-      )
-    ) {
-      try {
-        await API.delete(`/admin/user/${id}`);
-        fetchStudents();
-      } catch (err) {
-        alert('Failed to delete student');
-      }
+    if (window.confirm("Are you sure?")) {
+      await API.delete(`/admin/user/${id}`);
+      fetchStudents();
     }
   };
 
-  const q = searchTerm.trim().toLowerCase();
-  const filteredStudents = useMemo(() => {
-    if (!q) return students;
-    return students.filter((s) => {
-      const name = (s.name || '').toLowerCase();
-      const roll = (s.username || '').toLowerCase();
-      return name.includes(q) || roll.includes(q);
-    });
-  }, [students, q]);
+  const filtered = students.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <h2 style={{ marginTop: 0, marginBottom: '1.25rem' }}>Student registry</h2>
-
-      <div className="dv-card">
-        <h4 style={{ marginTop: 0 }}>Register new voter</h4>
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}
+    <div style={{ padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ margin: 0 }}>Student Registry</h2>
+        <button 
+          onClick={() => setShowPasswords(!showPasswords)}
+          style={toggleButtonStyle}
         >
-          <div style={{ flex: '1 1 200px' }}>
-            <label
-              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
-            >
-              Full name
-            </label>
-            <input
-              className="dv-input"
-              type="text"
-              placeholder="Full name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <label
-              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
-            >
-              Roll number / username
-            </label>
-            <input
-              className="dv-input"
-              type="text"
-              placeholder="Roll number / username"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              required
-            />
-          </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <label
-              style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
-            >
-              Password
-            </label>
-            <input
-              className="dv-input"
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-          </div>
-          <button type="submit" className="dv-btn dv-btn--primary" disabled={submitting}>
-            {submitting ? (
-              <>
-                <Spinner size="sm" white />
-                Adding…
-              </>
-            ) : (
-              'Add student'
-            )}
-          </button>
+          {showPasswords ? "🔒 Hide All Passwords" : "👁️ Show All Passwords"}
+        </button>
+      </div>
+
+      {/* REGISTRATION FORM */}
+      <div style={cardStyle}>
+        <h4 style={{ marginTop: 0 }}>Register New Voter</h4>
+        <form onSubmit={handleAdd} style={formGrid}>
+          <input placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={inputStyle} required />
+          <input placeholder="Roll number / username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} required />
+          <input placeholder="Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={inputStyle} required />
+          <button type="submit" style={addBtnStyle}>Add student</button>
         </form>
       </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label
-          style={{ display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 }}
-        >
-          Search by name or roll number
-        </label>
-        <input
-          className="dv-input"
-          type="search"
-          placeholder="Search by name or roll number…"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          autoComplete="off"
-        />
-      </div>
+      <input 
+        placeholder="Search by name or roll number..." 
+        value={searchTerm} 
+        onChange={e => setSearchTerm(e.target.value)} 
+        style={searchStyle} 
+      />
 
-      <div className="dv-table-wrap">
-        <table className="dv-table">
+      {/* DATA TABLE */}
+      <div style={tableCard}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>
-              <th>Full name</th>
-              <th>Roll no (username)</th>
-              <th>Voting status</th>
-              <th>Actions</th>
+            <tr style={thRow}>
+              <th style={tdPadding}>Full Name</th>
+              <th style={tdPadding}>Roll No (Username)</th>
+              <th style={tdPadding}>Password</th>
+              <th style={tdPadding}>Voting Status</th>
+              <th style={{ ...tdPadding, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={4}>
-                  <div className="dv-center" style={{ padding: '2rem' }}>
-                    <Spinner />
-                    <span>Loading students…</span>
-                  </div>
-                </td>
+            {filtered.map(s => (
+              <tr key={s._id} style={trStyle}>
+                {editId === s._id ? (
+                  <>
+                    <td style={tdPadding}><input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} style={editInput} /></td>
+                    <td style={tdPadding}><input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} style={editInput} /></td>
+                    <td style={tdPadding}><input value={editData.password} onChange={e => setEditData({...editData, password: e.target.value})} style={editInput} /></td>
+                    <td style={tdPadding}>-</td>
+                    <td style={{ ...tdPadding, textAlign: 'right' }}>
+                      <button onClick={() => handleModifySave(s._id)} style={saveBtn}>Save</button>
+                      <button onClick={() => setEditId(null)} style={cancelBtn}>Cancel</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td style={tdPadding}><strong>{s.name}</strong></td>
+                    <td style={tdPadding}>{s.username}</td>
+                    <td style={tdPadding}>
+                      <span style={{ fontFamily: 'monospace', color: showPasswords ? '#2c3e50' : '#bdc3c7' }}>
+                        {showPasswords ? s.password : "••••••••"}
+                      </span>
+                    </td>
+                    <td style={tdPadding}>
+                      <span style={{ color: s.hasVoted ? '#27ae60' : '#f39c12', fontWeight: 'bold' }}>
+                        {s.hasVoted ? "Voted" : "Pending"}
+                      </span>
+                    </td>
+                    <td style={{ ...tdPadding, textAlign: 'right' }}>
+                      <button onClick={() => startEdit(s)} style={modifyBtn}>Modify</button>
+                      <button onClick={() => deleteStudent(s._id)} style={deleteBtn}>Delete</button>
+                    </td>
+                  </>
+                )}
               </tr>
-            ) : filteredStudents.length > 0 ? (
-              filteredStudents.map((s) => (
-                <tr key={s._id}>
-                  <td>{s.name}</td>
-                  <td>{s.username}</td>
-                  <td>
-                    <span
-                      className="dv-badge"
-                      style={{
-                        background: s.hasVoted ? '#dcfce7' : '#ffedd5',
-                        color: s.hasVoted ? '#166534' : '#c2410c',
-                      }}
-                    >
-                      {s.hasVoted ? 'Voted' : 'Pending'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="dv-btn dv-btn--danger"
-                      onClick={() => deleteStudent(s._id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--dv-muted)', padding: '2rem' }}>
-                  {students.length === 0
-                    ? 'No students registered yet.'
-                    : 'No students match your search.'}
-                </td>
-              </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
     </div>
   );
 };
+
+// --- STYLES ---
+const cardStyle = { backgroundColor: 'white', padding: '25px', borderRadius: '12px', marginBottom: '30px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
+const formGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'center' };
+const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.9rem' };
+const addBtnStyle = { padding: '12px 25px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
+const searchStyle = { width: '100%', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '25px', boxSizing: 'border-box', fontSize: '1rem' };
+const tableCard = { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
+const thRow = { textAlign: 'left', backgroundColor: '#f9f9f9', borderBottom: '2px solid #eee' };
+const trStyle = { borderBottom: '1px solid #eee' };
+const tdPadding = { padding: '15px 20px' };
+const editInput = { width: '90%', padding: '8px', borderRadius: '5px', border: '2px solid #3498db' };
+const toggleButtonStyle = { padding: '10px 20px', backgroundColor: '#ecf0f1', border: '1px solid #bdc3c7', borderRadius: '25px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' };
+const modifyBtn = { color: '#3498db', background: 'none', border: 'none', cursor: 'pointer', marginRight: '15px', fontWeight: '600' };
+const deleteBtn = { color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' };
+const saveBtn = { color: '#27ae60', background: 'none', border: 'none', cursor: 'pointer', marginRight: '10px', fontWeight: 'bold' };
+const cancelBtn = { color: '#95a5a6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
 
 export default StudentRegistry;
