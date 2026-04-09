@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import API from '../api';
+import toast from 'react-hot-toast';
+import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton';
+import { UserSearch } from 'lucide-react';
 
 const StudentRegistry = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [formData, setFormData] = useState({ name: '', username: '', password: '' });
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({ name: '', username: '', password: '' });
@@ -15,27 +19,39 @@ const StudentRegistry = () => {
     try {
       const { data } = await API.get('/admin/users');
       setStudents(data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load students.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchStudents(); }, []);
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
       await API.post('/admin/add-user', formData);
       setFormData({ name: '', username: '', password: '' });
-      fetchStudents();
-    } catch (err) { alert(err.response?.data?.message || "Error adding student"); }
+      await fetchStudents();
+      toast.success('Student added.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error adding student');
+    }
   };
 
   const handleModifySave = async (id) => {
     try {
       await API.put(`/admin/user/${id}`, editData);
       setEditId(null);
-      fetchStudents();
-    } catch (err) { alert("Modify failed"); }
+      await fetchStudents();
+      toast.success('Student updated.');
+    } catch {
+      toast.error('Modify failed');
+    }
   };
 
   const startEdit = (s) => {
@@ -44,117 +60,232 @@ const StudentRegistry = () => {
   };
 
   const deleteStudent = async (id) => {
-    if (window.confirm("Are you sure?")) {
+    if (!window.confirm('Are you sure?')) return;
+    try {
       await API.delete(`/admin/user/${id}`);
-      fetchStudents();
+      await fetchStudents();
+      toast.success('Student deleted.');
+    } catch {
+      toast.error('Failed to delete student.');
     }
   };
 
-  const filtered = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter((s) => {
+      const name = (s.name || '').toLowerCase();
+      const roll = (s.username || '').toLowerCase();
+      return name.includes(q) || roll.includes(q);
+    });
+  }, [students, searchTerm]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>Student Registry</h2>
-        <button 
-          onClick={() => setShowPasswords(!showPasswords)}
-          style={toggleButtonStyle}
+    <div style={{ padding: 20, maxWidth: 1100 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 18,
+          flexWrap: 'wrap',
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Student registry</h2>
+        <button
+          type="button"
+          className="dv-btn dv-btn--ghost"
+          onClick={() => setShowPasswords((v) => !v)}
+          style={{ padding: '10px 14px' }}
         >
-          {showPasswords ? "🔒 Hide All Passwords" : "👁️ Show All Passwords"}
+          {showPasswords ? 'Hide passwords' : 'Show passwords'}
         </button>
       </div>
 
-      {/* REGISTRATION FORM */}
-      <div style={cardStyle}>
-        <h4 style={{ marginTop: 0 }}>Register New Voter</h4>
-        <form onSubmit={handleAdd} style={formGrid}>
-          <input placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={inputStyle} required />
-          <input placeholder="Roll number / username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} required />
-          <input placeholder="Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={inputStyle} required />
-          <button type="submit" style={addBtnStyle}>Add student</button>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Register new voter</h4>
+        <form
+          onSubmit={handleAdd}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.2fr 1fr 1fr auto',
+            gap: 12,
+            alignItems: 'end',
+          }}
+        >
+          <div>
+            <label style={labelStyle}>Full name</label>
+            <input
+              className="dv-input"
+              placeholder="Full name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Roll number / username</label>
+            <input
+              className="dv-input"
+              placeholder="Roll number / username"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Password</label>
+            <input
+              className="dv-input"
+              placeholder="Password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              required
+            />
+          </div>
+          <button type="submit" className="dv-btn dv-btn--primary">
+            Add
+          </button>
         </form>
       </div>
 
-      <input 
-        placeholder="Search by name or roll number..." 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
-        style={searchStyle} 
-      />
+      <div style={{ marginBottom: 14 }}>
+        <input
+          className="dv-input"
+          placeholder="Search by name or roll number…"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
-      {/* DATA TABLE */}
-      <div style={tableCard}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={thRow}>
-              <th style={tdPadding}>Full Name</th>
-              <th style={tdPadding}>Roll No (Username)</th>
-              <th style={tdPadding}>Password</th>
-              <th style={tdPadding}>Voting Status</th>
-              <th style={{ ...tdPadding, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(s => (
-              <tr key={s._id} style={trStyle}>
-                {editId === s._id ? (
-                  <>
-                    <td style={tdPadding}><input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} style={editInput} /></td>
-                    <td style={tdPadding}><input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} style={editInput} /></td>
-                    <td style={tdPadding}><input value={editData.password} onChange={e => setEditData({...editData, password: e.target.value})} style={editInput} /></td>
-                    <td style={tdPadding}>-</td>
-                    <td style={{ ...tdPadding, textAlign: 'right' }}>
-                      <button onClick={() => handleModifySave(s._id)} style={saveBtn}>Save</button>
-                      <button onClick={() => setEditId(null)} style={cancelBtn}>Cancel</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td style={tdPadding}><strong>{s.name}</strong></td>
-                    <td style={tdPadding}>{s.username}</td>
-                    <td style={tdPadding}>
-                      <span style={{ fontFamily: 'monospace', color: showPasswords ? '#2c3e50' : '#bdc3c7' }}>
-                        {showPasswords ? s.password : "••••••••"}
-                      </span>
-                    </td>
-                    <td style={tdPadding}>
-                      <span style={{ color: s.hasVoted ? '#27ae60' : '#f39c12', fontWeight: 'bold' }}>
-                        {s.hasVoted ? "Voted" : "Pending"}
-                      </span>
-                    </td>
-                    <td style={{ ...tdPadding, textAlign: 'right' }}>
-                      <button onClick={() => startEdit(s)} style={modifyBtn}>Modify</button>
-                      <button onClick={() => deleteStudent(s._id)} style={deleteBtn}>Delete</button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Students</h4>
+        {loading ? (
+          <div>
+            <Skeleton style={{ height: 44, marginBottom: 10 }} />
+            <Skeleton style={{ height: 44, marginBottom: 10 }} />
+            <Skeleton style={{ height: 44, marginBottom: 10 }} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No students found"
+            description="Try a different search, or add a new student above."
+            Icon={UserSearch}
+          />
+        ) : (
+          <div className="dv-table-wrap">
+            <table className="dv-table">
+              <thead>
+                <tr>
+                  <th>Full name</th>
+                  <th>Roll no (username)</th>
+                  <th>Password</th>
+                  <th>Voting status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s) => (
+                  <tr key={s._id}>
+                    {editId === s._id ? (
+                      <>
+                        <td>
+                          <input
+                            value={editData.name}
+                            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                            style={editInput}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={editData.username}
+                            onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                            style={editInput}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={editData.password}
+                            onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                            style={editInput}
+                          />
+                        </td>
+                        <td>—</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="dv-btn dv-btn--success"
+                            style={{ padding: '8px 12px' }}
+                            onClick={() => handleModifySave(s._id)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className="dv-btn dv-btn--ghost"
+                            style={{ padding: '8px 12px', marginLeft: 8 }}
+                            onClick={() => setEditId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>
+                          <strong>{s.name}</strong>
+                        </td>
+                        <td>{s.username}</td>
+                        <td>
+                          {/* Keep plain-text password visibility logic as-is */}
+                          <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
+                            {showPasswords ? s.password : '••••••••'}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className="dv-badge"
+                            style={{
+                              background: s.hasVoted ? '#dcfce7' : '#ffedd5',
+                              color: s.hasVoted ? '#166534' : '#9a3412',
+                            }}
+                          >
+                            {s.hasVoted ? 'Voted' : 'Pending'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="dv-btn dv-btn--ghost"
+                            style={{ padding: '8px 12px' }}
+                            onClick={() => startEdit(s)}
+                          >
+                            Modify
+                          </button>
+                          <button
+                            type="button"
+                            className="dv-btn dv-btn--danger"
+                            style={{ padding: '8px 12px', marginLeft: 8 }}
+                            onClick={() => deleteStudent(s._id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// --- STYLES ---
-const cardStyle = { backgroundColor: 'white', padding: '25px', borderRadius: '12px', marginBottom: '30px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
-const formGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'center' };
-const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.9rem' };
-const addBtnStyle = { padding: '12px 25px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const searchStyle = { width: '100%', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '25px', boxSizing: 'border-box', fontSize: '1rem' };
-const tableCard = { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
-const thRow = { textAlign: 'left', backgroundColor: '#f9f9f9', borderBottom: '2px solid #eee' };
-const trStyle = { borderBottom: '1px solid #eee' };
-const tdPadding = { padding: '15px 20px' };
-const editInput = { width: '90%', padding: '8px', borderRadius: '5px', border: '2px solid #3498db' };
-const toggleButtonStyle = { padding: '10px 20px', backgroundColor: '#ecf0f1', border: '1px solid #bdc3c7', borderRadius: '25px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' };
-const modifyBtn = { color: '#3498db', background: 'none', border: 'none', cursor: 'pointer', marginRight: '15px', fontWeight: '600' };
-const deleteBtn = { color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' };
-const saveBtn = { color: '#27ae60', background: 'none', border: 'none', cursor: 'pointer', marginRight: '10px', fontWeight: 'bold' };
-const cancelBtn = { color: '#95a5a6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
+const labelStyle = { display: 'block', fontSize: '0.8rem', color: 'var(--dv-muted)', marginBottom: 4 };
+const editInput = { width: '92%', padding: '10px', borderRadius: 10, border: '1px solid var(--dv-border)' };
 
 export default StudentRegistry;

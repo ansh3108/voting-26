@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Spinner from '../components/Spinner';
+import toast from 'react-hot-toast';
 
 const Login = ({ setUser }) => {
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -17,13 +18,16 @@ const Login = ({ setUser }) => {
       const { data } = await API.post('/auth/login', formData);
       localStorage.setItem('user', JSON.stringify(data));
       setUser(data.user);
+      toast.success('Welcome back!');
       if (data.user.role === 'admin') {
-        navigate('/admin');
+        navigate('/admin-dashboard');
       } else {
-        navigate('/voter');
+        navigate('/voter-dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      const msg = err.response?.data?.message || 'Login failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -72,7 +76,7 @@ const Login = ({ setUser }) => {
           <button type="submit" className="dv-btn dv-btn--primary" style={{ width: '100%' }} disabled={loading}>
             {loading ? (
               <>
-                <Spinner size="sm" white />
+                <Spinner size={18} color="#fff" />
                 Signing in…
               </>
             ) : (

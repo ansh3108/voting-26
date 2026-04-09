@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { Menu } from 'lucide-react';
 
 // --- IMPORT COMPONENTS ---
 import Sidebar from './components/Sidebar';
@@ -11,34 +13,76 @@ import CandidateManagement from './pages/CandidateManagement';
 import VoterDashboard from './pages/VoterDashboard';
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // 1. CHECK FOR LOGGED-IN USER ON STARTUP
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    if (!savedUser) return null;
+    try {
       const parsedData = JSON.parse(savedUser);
-      setUser(parsedData.user);
+      return parsedData.user || null;
+    } catch {
+      return null;
     }
-    setLoading(false);
-  }, []);
+  });
+  const [loading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    const sync = () => setSidebarOpen(window.innerWidth > 900);
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, [user?.role]);
 
   if (loading) return <div style={loaderStyle}>Initializing System...</div>;
 
   return (
     <Router>
-      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f4f7f6' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--dv-bg)' }}>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#0f172a',
+              color: '#f8fafc',
+              border: '1px solid rgba(248, 250, 252, 0.12)',
+            },
+          }}
+        />
         
         {/* 2. SIDEBAR LOGIC: Only show if Admin is logged in */}
-        {user && user.role === 'admin' && <Sidebar />}
+        {user && user.role === 'admin' && (
+          <>
+            <div
+              className={`dv-sidebar-overlay ${sidebarOpen ? 'dv-sidebar-overlay--open' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            />
+            <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          </>
+        )}
 
         {/* 3. MAIN CONTENT AREA */}
-        <div style={{ 
-          flex: 1, 
-          marginLeft: user && user.role === 'admin' ? '260px' : '0', 
-          transition: 'margin 0.3s ease' 
-        }}>
+        <div
+          className={user && user.role === 'admin' ? 'dv-admin-main' : undefined}
+          style={
+            user && user.role === 'admin'
+              ? undefined
+              : { flex: 1, minHeight: '100vh', background: 'var(--dv-bg)' }
+          }
+        >
+          {user && user.role === 'admin' ? (
+            <div className="dv-topbar">
+              <button
+                type="button"
+                className="dv-hamburger"
+                aria-label="Open menu"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu size={18} />
+              </button>
+              <div style={{ fontWeight: 700, color: 'var(--dv-text)' }}>Admin</div>
+            </div>
+          ) : null}
           <Routes>
             {/* PUBLIC ROUTE */}
             <Route 

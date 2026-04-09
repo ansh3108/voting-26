@@ -1,7 +1,11 @@
-const Spinner = ({ className = '', size = 'md', white = false }) => {
-  const sm = size === 'sm' ? ' dv-spinner--sm' : '';
-  const w = white ? ' dv-spinner--white' : '';
-  return <span className={`dv-spinner${sm}${w} ${className}`.trim()} role="status" aria-label="Loading" />;
+import { Loader2 } from 'lucide-react';
+
+const Spinner = ({ size = 22, color = 'var(--dv-primary)', className = '' }) => {
+  return (
+    <span role="status" aria-label="Loading" style={{ display: 'inline-flex', alignItems: 'center' }}>
+      <Loader2 size={size} color={color} className={`dv-icon-spin ${className}`.trim()} />
+    </span>
+  );
 };
 
 export default Spinner;

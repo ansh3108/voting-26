@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
+import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
+import Skeleton from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import { Users } from 'lucide-react';
 
 const CandidateManagement = () => {
   const [candidates, setCandidates] = useState([]);
@@ -7,6 +12,7 @@ const CandidateManagement = () => {
   const [formData, setFormData] = useState({ name: '', category: '' });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -29,7 +35,7 @@ const CandidateManagement = () => {
     // 10MB LIMIT CHECK (10 * 1024 * 1024 bytes)
     const limit = 10 * 1024 * 1024;
     if (selectedFile.size > limit) {
-      alert("File is too large! Maximum limit is 10MB.");
+      toast.error('File is too large (max 10MB).');
       e.target.value = ""; // Clear the input
       setFile(null);
       return;
@@ -39,7 +45,7 @@ const CandidateManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return alert("Please upload a photo!");
+    if (!file) return toast.error('Please upload a photo.');
 
     const data = new FormData();
     data.append('name', formData.name);
@@ -47,106 +53,186 @@ const CandidateManagement = () => {
     data.append('image', file);
 
     try {
+      setSubmitting(true);
       await API.post('/admin/add-candidate', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setFormData({ name: '', category: '' });
       setFile(null);
       document.getElementById('fileInput').value = "";
-      fetchData();
+      await fetchData();
+      toast.success('Candidate added.');
     } catch (err) {
-      alert(err.response?.data?.message || "Error adding candidate");
+      toast.error(err.response?.data?.message || 'Error adding candidate');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete candidate?")) {
-      await API.delete(`/admin/candidate/${id}`);
-      fetchData();
+      try {
+        await API.delete(`/admin/candidate/${id}`);
+        await fetchData();
+        toast.success('Candidate deleted.');
+      } catch {
+        toast.error('Failed to delete candidate.');
+      }
     }
   };
 
-  if (loading) return <div style={{ padding: '50px' }}>Loading...</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2 style={{ marginTop: 0 }}>Candidate management</h2>
+        <div className="dv-card">
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 12 }}>
+            <Skeleton style={{ height: 44 }} />
+            <Skeleton style={{ height: 44 }} />
+            <Skeleton style={{ height: 44 }} />
+            <Skeleton style={{ height: 44 }} />
+          </div>
+        </div>
+        <div className="dv-card">
+          <Skeleton style={{ height: 18, width: 220, marginBottom: 14 }} />
+          <Skeleton style={{ height: 42, marginBottom: 10 }} />
+          <Skeleton style={{ height: 42, marginBottom: 10 }} />
+          <Skeleton style={{ height: 42 }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Candidate Management</h2>
+    <div style={{ padding: 20 }}>
+      <h2 style={{ marginTop: 0 }}>Candidate management</h2>
 
       {/* FORM */}
-      <div style={cardStyle}>
-        <form onSubmit={handleSubmit} style={formGrid}>
-          <input 
-            placeholder="Candidate Name" 
-            value={formData.name} 
-            onChange={e => setFormData({...formData, name: e.target.value})} 
-            style={inputStyle} 
-            required 
-          />
-          <select 
-            value={formData.category} 
-            onChange={e => setFormData({...formData, category: e.target.value})} 
-            style={inputStyle} 
-            required
-          >
-            <option value="">Select Category</option>
-            {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
-          </select>
-          <input 
-            id="fileInput"
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-            style={inputStyle} 
-            required 
-          />
-          <button type="submit" style={addBtnStyle}>Add Candidate</button>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Add candidate</h4>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 1.2fr 1.2fr auto',
+            gap: 12,
+            alignItems: 'end',
+          }}
+        >
+          <div>
+            <label style={labelStyle}>Candidate name</label>
+            <input
+              className="dv-input"
+              placeholder="Candidate name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Post (category)</label>
+            <select
+              className="dv-input"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              required
+            >
+              <option value="">Select category</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Photo</label>
+            <input
+              id="fileInput"
+              className="dv-input"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              required
+            />
+          </div>
+          <button type="submit" className="dv-btn dv-btn--success" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Spinner size={18} color="#fff" />
+                Adding…
+              </>
+            ) : (
+              'Add'
+            )}
+          </button>
         </form>
-        <small style={{ color: '#888' }}>* Max file size: 10MB (JPG, PNG, WEBP)</small>
+        <p style={{ margin: '0.75rem 0 0', color: 'var(--dv-muted)', fontSize: '0.9rem' }}>
+          Max file size: 10MB (JPG, PNG, WEBP)
+        </p>
       </div>
 
       {/* TABLE */}
-      <div style={tableCard}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-              <th style={thStyle}>Photo</th>
-              <th style={thStyle}>Name</th>
-              <th style={thStyle}>Category</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {candidates.map(c => (
-              <tr key={c._id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={tdStyle}>
-                  <img 
-                    src={c.imageUrl ? `http://localhost:5000${c.imageUrl}` : 'https://placehold.co/40'} 
-                    alt="" 
-                    style={avatarStyle} 
-                  />
-                </td>
-                <td style={tdStyle}><strong>{c.name}</strong></td>
-                <td style={tdStyle}>{c.category}</td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  <button onClick={() => handleDelete(c._id)} style={deleteBtn}>Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="dv-card">
+        <h4 style={{ marginTop: 0 }}>Candidates</h4>
+        {candidates.length === 0 ? (
+          <EmptyState
+            title="No candidates yet"
+            description="Add candidates to start the election and show live rankings."
+            Icon={Users}
+          />
+        ) : (
+          <div className="dv-table-wrap">
+            <table className="dv-table">
+              <thead>
+                <tr>
+                  <th>Photo</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((c) => (
+                  <tr key={c._id}>
+                    <td>
+                      <img
+                        src={c.imageUrl ? `http://localhost:5000${c.imageUrl}` : 'https://placehold.co/40'}
+                        alt=""
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          objectFit: 'cover',
+                          border: '1px solid var(--dv-border)',
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <strong>{c.name}</strong>
+                    </td>
+                    <td>{c.category}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="dv-btn dv-btn--danger" onClick={() => handleDelete(c._id)}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const cardStyle = { backgroundColor: 'white', padding: '20px', borderRadius: '12px', marginBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
-const formGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'center' };
-const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #ddd' };
-const addBtnStyle = { padding: '12px 25px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
-const tableCard = { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
-const thStyle = { padding: '15px' };
-const tdStyle = { padding: '15px' };
-const avatarStyle = { width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' };
-const deleteBtn = { color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
+const labelStyle = {
+  display: 'block',
+  fontSize: '0.8rem',
+  color: 'var(--dv-muted)',
+  marginBottom: 4,
+};
 
 export default CandidateManagement;

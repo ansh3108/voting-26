@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
 import Spinner from '../components/Spinner';
+import toast from 'react-hot-toast';
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
@@ -34,7 +35,7 @@ const CategoryManagement = () => {
       setNewCategory({ name: '', maxSelections: 1 });
       await fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding category');
+      toast.error(err.response?.data?.message || 'Error adding category');
     } finally {
       setSubmitting(false);
     }
@@ -45,8 +46,8 @@ const CategoryManagement = () => {
       try {
         await API.delete(`/categories/${id}`);
         fetchCategories();
-      } catch (err) {
-        alert("Error deleting category");
+      } catch {
+        toast.error('Error deleting category');
       }
     }
   };
@@ -90,7 +91,7 @@ const CategoryManagement = () => {
           <button type="submit" className="dv-btn dv-btn--primary" disabled={submitting}>
             {submitting ? (
               <>
-                <Spinner size="sm" white />
+                <Spinner size={18} color="#fff" />
                 Creating…
               </>
             ) : (

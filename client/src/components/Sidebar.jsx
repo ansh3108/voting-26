@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
+import { X } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ open = false, onClose }) => {
   const menuItems = [
     { name: '📊 Election Overview', path: '/admin-dashboard' },
     { name: '👥 Student Registry', path: '/students' },
@@ -9,77 +10,61 @@ const Sidebar = () => {
   ];
 
   return (
-    <div style={sidebarStyle}>
-      <div style={logoSectionStyle}>
-        <h2 style={{ margin: 0, fontSize: '1.5rem', letterSpacing: '1px' }}>VOTE HUB</h2>
-        <small style={{ color: '#3498db' }}>Admin Panel</small>
+    <div className={`dv-admin-sidebar ${open ? '' : 'dv-admin-sidebar--closed'}`}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ padding: '0.5rem 0' }}>
+          <div style={{ fontWeight: 800, letterSpacing: '0.08em' }}>VOTE HUB</div>
+          <div style={{ color: '#93c5fd', fontSize: '0.85rem' }}>Admin panel</div>
+        </div>
+        <button
+          type="button"
+          className="dv-btn dv-btn--ghost"
+          onClick={onClose}
+          style={{ color: '#e2e8f0', padding: 8, borderRadius: 10 }}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
-      <nav style={{ flex: 1, padding: '20px 0' }}>
+
+      <nav style={{ flex: 1, padding: '1rem 0' }}>
         {menuItems.map((item) => (
           <NavLink 
             key={item.path} 
             to={item.path} 
             style={({ isActive }) => ({
-              ...linkStyle,
-              borderLeft: isActive ? '4px solid #3498db' : '4px solid transparent',
-              backgroundColor: isActive ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
-              color: isActive ? '#3498db' : '#ecf0f1'
+              display: 'block',
+              padding: '0.75rem 0.9rem',
+              textDecoration: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              borderRadius: 10,
+              transition: 'all 0.2s ease',
+              color: isActive ? '#ffffff' : '#cbd5e1',
+              background: isActive ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
             })}
+            onClick={() => onClose?.()}
           >
             {item.name}
           </NavLink>
         ))}
       </nav>
-      <div style={{ padding: '20px', borderTop: '1px solid #3e4f5f' }}>
-        <button 
-          onClick={() => { localStorage.clear(); window.location.href = '/login'; }} 
-          style={logoutButtonStyle}
+
+      <div style={{ paddingTop: '1rem', borderTop: '1px solid rgba(248, 250, 252, 0.12)' }}>
+        <button
+          type="button"
+          className="dv-btn dv-btn--danger"
+          style={{ width: '100%', justifyContent: 'center' }}
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = '/login';
+          }}
         >
-          🚪 Sign Out
+          Sign out
         </button>
       </div>
     </div>
   );
-};
-
-const sidebarStyle = {
-  width: '260px',
-  height: '100vh',
-  backgroundColor: '#1a252f',
-  position: 'fixed',
-  left: 0,
-  top: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  boxShadow: '4px 0 10px rgba(0,0,0,0.1)',
-  zIndex: 100
-};
-
-const logoSectionStyle = {
-  padding: '30px 20px',
-  textAlign: 'center',
-  borderBottom: '1px solid #3e4f5f',
-  color: 'white'
-};
-
-const linkStyle = {
-  display: 'block',
-  padding: '15px 25px',
-  textDecoration: 'none',
-  fontSize: '1rem',
-  transition: '0.2s all ease',
-  fontWeight: '500'
-};
-
-const logoutButtonStyle = {
-  width: '100%',
-  padding: '10px',
-  backgroundColor: 'transparent',
-  color: '#e74c3c',
-  border: '1px solid #e74c3c',
-  borderRadius: '5px',
-  cursor: 'pointer',
-  fontWeight: 'bold'
 };
 
 export default Sidebar;

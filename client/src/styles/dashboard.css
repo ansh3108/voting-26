@@ -1,13 +1,14 @@
 /* School Voting — shared dashboard styling (clean / shadcn-inspired) */
 
 :root {
-  --dv-bg: #f4f6f8;
+  /* Admin aesthetic: deep navy / clean white / action green */
+  --dv-bg: #f6f8fb;
   --dv-surface: #ffffff;
-  --dv-border: #e5e7eb;
+  --dv-border: rgba(15, 23, 42, 0.10);
   --dv-muted: #64748b;
-  --dv-text: #0f172a;
-  --dv-primary: #2563eb;
-  --dv-primary-hover: #1d4ed8;
+  --dv-text: #0b1220;
+  --dv-primary: #1d4ed8;
+  --dv-primary-hover: #1e40af;
   --dv-success: #16a34a;
   --dv-success-hover: #15803d;
   --dv-danger: #dc2626;
@@ -137,6 +138,10 @@
   transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
+.dv-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
 .dv-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -198,6 +203,10 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+.dv-icon-spin {
+  animation: dv-spin 0.7s linear infinite;
+}
+
 .dv-spinner {
   width: 1.75rem;
   height: 1.75rem;
@@ -234,6 +243,51 @@
   color: var(--dv-muted);
 }
 
+.dv-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f7;
+  border-radius: 10px;
+}
+
+.dv-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: dv-shimmer 1.1s ease-in-out infinite;
+}
+
+@keyframes dv-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.dv-empty {
+  text-align: center;
+  padding: 3rem 1.25rem;
+  color: var(--dv-muted);
+}
+
+.dv-empty-title {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--dv-text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.dv-empty-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 .dv-admin-shell {
   display: flex;
   min-height: 100vh;
@@ -245,6 +299,13 @@
   color: #f8fafc;
   padding: 1.5rem;
   flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 50;
+  transform: translateX(0);
+  transition: transform 0.2s ease;
 }
 
 .dv-admin-sidebar h3 {
@@ -284,6 +345,67 @@
   padding: 2rem;
   background: var(--dv-bg);
   min-width: 0;
+  margin-left: 260px;
+  transition: margin-left 0.2s ease;
+}
+
+.dv-topbar {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(246, 248, 251, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--dv-border);
+  padding: 0.75rem 1rem;
+  margin: -2rem -2rem 1.5rem;
+}
+
+.dv-hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--dv-border);
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.dv-hamburger:hover {
+  box-shadow: var(--dv-shadow);
+  transform: translateY(-1px);
+}
+
+.dv-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 40;
+}
+
+.dv-sidebar-overlay--open {
+  /* display toggled in mobile media query */
+}
+
+@media (max-width: 900px) {
+  .dv-sidebar-overlay--open {
+    display: block;
+  }
+  .dv-admin-sidebar--closed {
+    transform: translateX(-100%);
+  }
+  .dv-admin-main {
+    margin-left: 0;
+    padding: 1.25rem;
+  }
+  .dv-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
 }
 
 .dv-ballot-card {

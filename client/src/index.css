@@ -1,15 +1,15 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  color: #213547; /* Dark Grey Text */
-  background-color: #ffffff; /* White Background */
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: #0b1220;
+  background-color: #f6f8fb;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: flex-start;
+  display: block;
   min-width: 320px;
   min-height: 100vh;
+  background: #f6f8fb;
 }
 
 #root {
@@ -18,10 +18,10 @@ body {
 
 button {
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.2s ease;
 }
 
 /* Ensure headings are visible */
 h1, h2, h3, h4 {
-  color: #2c3e50;
+  color: #0b1220;
 }

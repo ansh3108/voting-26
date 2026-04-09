@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
+import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
 
 const VoterDashboard = ({ user, setUser }) => {
   const [candidates, setCandidates] = useState([]);
@@ -41,11 +43,12 @@ const VoterDashboard = ({ user, setUser }) => {
     const categoryInfo = categories.find(c => c.name === categoryName);
     const maxAllowed = categoryInfo ? categoryInfo.maxSelections : 1;
     const currentSelections = selections[categoryName] || [];
+    const sid = String(candidateId);
 
-    if (currentSelections.includes(candidateId)) {
+    if (currentSelections.some((id) => String(id) === sid)) {
       setSelections({
         ...selections,
-        [categoryName]: currentSelections.filter(id => id !== candidateId)
+        [categoryName]: currentSelections.filter(id => String(id) !== sid)
       });
     } else {
       if (currentSelections.length < maxAllowed) {
@@ -54,7 +57,7 @@ const VoterDashboard = ({ user, setUser }) => {
           [categoryName]: [...currentSelections, candidateId]
         });
       } else {
-        alert(`Limit reached! You can only select ${maxAllowed} for ${categoryName}.`);
+        toast.error(`Limit reached: ${maxAllowed} selection(s) for ${categoryName}.`);
       }
     }
   };
@@ -62,7 +65,8 @@ const VoterDashboard = ({ user, setUser }) => {
   // 3. SUBMIT VOTE
   const submitVote = async () => {
     if (Object.keys(selections).length < categories.length) {
-      return alert("Please make selections in all categories.");
+      toast.error('Please make selections in all categories.');
+      return;
     }
     if (!window.confirm("Final check! Submit your ballot?")) return;
 
@@ -78,8 +82,9 @@ const VoterDashboard = ({ user, setUser }) => {
       
       setUser(updatedUser);
       setVotedStatus(true);
+      toast.success('Vote submitted successfully.');
     } catch (err) {
-      alert("Submission failed. Please try again.");
+      toast.error(err.response?.data?.message || 'Submission failed. Please try again.');
     }
   };
 
@@ -88,7 +93,14 @@ const VoterDashboard = ({ user, setUser }) => {
     window.location.href = '/login';
   };
 
-  if (loading) return <div style={fullPageCenter}>Syncing Ballot...</div>;
+  if (loading) {
+    return (
+      <div className="dv-center" style={{ minHeight: '60vh' }}>
+        <Spinner />
+        <span>Loading ballot…</span>
+      </div>
+    );
+  }
 
   // --- VIEW: THE VOTE RECEIPT (Matches your uploaded image) ---
   if (votedStatus) {
@@ -141,7 +153,7 @@ const VoterDashboard = ({ user, setUser }) => {
 
   // --- VIEW: THE ACTIVE BALLOT ---
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px' }}>
+    <div className="dv-page" style={{ maxWidth: 1100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <h2>Official Election Ballot</h2>
         <button onClick={handleLogout} style={logoutButtonStyle}>Logout</button>
@@ -150,37 +162,42 @@ const VoterDashboard = ({ user, setUser }) => {
       {categories.map(cat => (
         <div key={cat._id} style={{ marginBottom: '60px' }}>
           <div style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '12px', marginBottom: '25px' }}>
-            <h3 style={{ borderLeft: '5px solid #3498db', paddingLeft: '15px', margin: 0 }}>
-              {cat.name} <small style={{ color: '#888', fontWeight: 'normal' }}>(Pick {cat.maxSelections})</small>
+            <h3 style={{ borderLeft: '4px solid var(--dv-primary)', paddingLeft: '12px', margin: 0 }}>
+              {cat.name}{' '}
+              <small style={{ color: 'var(--dv-muted)', fontWeight: 'normal' }}>
+                (Pick up to {cat.maxSelections})
+              </small>
             </h3>
-            <p style={{ margin: '8px 0 0 20px', color: '#3498db', fontSize: '0.9rem' }}>
+            <p style={{ margin: '8px 0 0 16px', color: 'var(--dv-primary)', fontSize: '0.95rem' }}>
               Selected: {selections[cat.name]?.length || 0} / {cat.maxSelections}
             </p>
           </div>
 
           <div style={ballotGridStyle}>
             {groupedCandidates[cat.name]?.map(cand => {
-              const isSelected = selections[cat.name]?.includes(cand._id);
+              const isSelected = selections[cat.name]?.some((id) => String(id) === String(cand._id));
               return (
                 <div 
                   key={cand._id} 
                   onClick={() => handleSelect(cat.name, cand._id)}
                   style={{
                     ...candidateCardStyle,
-                    borderColor: isSelected ? '#3498db' : '#eee',
-                    backgroundColor: isSelected ? '#f0f7ff' : 'white'
+                    borderColor: isSelected ? 'var(--dv-primary)' : 'var(--dv-border)',
+                    backgroundColor: isSelected ? '#eff6ff' : 'white'
                   }}
                 >
                   <img src={cand.imageUrl || 'https://placehold.co/100'} alt="" style={avatarStyle} />
                   <h4>{cand.name}</h4>
-                  {isSelected && <span style={{ color: '#3498db', fontWeight: 'bold' }}>✓ SELECTED</span>}
+                  {isSelected && <span style={{ color: 'var(--dv-primary)', fontWeight: '700' }}>Selected</span>}
                 </div>
               );
             })}
           </div>
         </div>
       ))}
-      <button onClick={submitVote} style={submitButtonStyle}>Cast My Votes</button>
+      <button onClick={submitVote} className="dv-btn dv-btn--success" style={{ width: '100%', padding: 18, fontSize: '1.05rem' }}>
+        Cast my votes
+      </button>
     </div>
   );
 };
@@ -195,11 +212,35 @@ const receiptImageFrame = { width: '180px', height: '180px', padding: '10px', bo
 const receiptImage = { maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' };
 const dividerLine = { height: '1px', width: '100%', backgroundColor: '#f0f0f0', maxWidth: '800px', margin: '40px auto 0' };
 
-const ballotGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' };
-const candidateCardStyle = { border: '2px solid #eee', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' };
-const avatarStyle = { width: '100px', height: '100px', borderRadius: '4px', objectFit: 'cover' };
-const submitButtonStyle = { width: '100%', padding: '20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.2rem', cursor: 'pointer' };
-const logoutButtonStyle = { padding: '8px 15px', color: '#e74c3c', border: '1px solid #e74c3c', background: 'none', borderRadius: '4px', cursor: 'pointer' };
-const fullPageCenter = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' };
+const ballotGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+  gap: 16,
+};
+const candidateCardStyle = {
+  border: '2px solid var(--dv-border)',
+  borderRadius: 14,
+  padding: 18,
+  textAlign: 'center',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  boxShadow: '0 1px 0 rgba(15, 23, 42, 0.03)',
+};
+const avatarStyle = {
+  width: 100,
+  height: 100,
+  borderRadius: 14,
+  objectFit: 'cover',
+  border: '1px solid var(--dv-border)',
+};
+const logoutButtonStyle = {
+  padding: '10px 14px',
+  color: 'var(--dv-text)',
+  border: '1px solid var(--dv-border)',
+  background: 'white',
+  borderRadius: 10,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+};
 
 export default VoterDashboard;
